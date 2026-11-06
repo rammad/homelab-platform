@@ -37,11 +37,11 @@ It is a review/recreation reference, not a complete disaster-recovery backup.
 
 ## VC-1: supported software path versus advertised decoder
 
-NAS PCI inventory confirms Arc A310/DG2, 8086:56a6. Tdarr's documented second
-worker is Arc B580/BMG. Intel's Linux media-driver table has no VC-1 decode entry
-for DG2 or BMG. A compiled FFmpeg `vc1_qsv` decoder does not prove device support.
-The observed unsupported initialization (-3) and successful software fallback
-fit this limitation; this does not establish every Tdarr failure has that cause.
+Hardware decode support depends on the installed GPU and driver, not just the
+FFmpeg build. The observed VC-1 initialization failure and successful software
+fallback motivated retaining software decode for that codec while using hardware
+encoding. Check the vendor support matrix for the target hardware before forcing
+hardware input decoding; this finding does not explain every Tdarr failure.
 
 Keep VC-1 software decoding and supported QSV encoding. For Tdarr, inspect the
 actual job/node command before changing a flow: remove forced VC-1 hardware
@@ -305,3 +305,12 @@ Candidate remediation remains validated externalization and selective removal
 of embedded text tracks, with originals preserved, rather than global GPU disable.
 
 State/configuration recovery prerequisites: [application state recovery](application-state-recovery.md).
+
+## Planned placement and scratch storage
+
+Move Emby's temporary transcode workspace to a dedicated scratch disk and add
+another GPU worker so Emby can run on either eligible host. This is planned,
+not a change to the current deployment. Before enabling alternate placement,
+validate GPU access, supported codecs, shared media/config paths and scratch
+capacity on both workers. Keep one active Emby instance; placement flexibility
+does not imply safe active-active operation or automatic ingress failover.

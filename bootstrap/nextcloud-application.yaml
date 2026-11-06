@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/REPLACE_ME/homelab-platform.git
+    repoURL: https://github.com/rammad/homelab-platform.git
     targetRevision: master
     path: cluster/apps/nextcloud
   destination:

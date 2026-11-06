@@ -99,10 +99,10 @@ Architecture Decision Records (ADRs) for significant choices made during the bui
 **Status:** Implemented
 
 **Context:** Full migration of the media stack into K3s is on hold until
-after the next move/resettle. Meanwhile, a second physical node (Intel B580,
+after the next move/resettle. Meanwhile, a second physical node (GPU-equipped worker,
 for hardware transcode) is available now and idle otherwise.
 
-**Decision:** Join the B580 box to the K3s cluster as a second node, but
+**Decision:** Join the GPU worker node to the K3s cluster as a second node, but
 only run the Tdarr *Node* workload on it (`cluster/apps/tdarr/`), pinned via
 `nodeSelector`. The Tdarr *Server* remains a native TrueNAS app, outside K3s.
 
@@ -125,12 +125,12 @@ only run the Tdarr *Node* workload on it (`cluster/apps/tdarr/`), pinned via
   has to be mirrored here by hand — no shared source of truth between a
   TrueNAS-native app and a K3s pod.
 
-**Outcome:** Working and verified — it took three attempts. B580 node joined,
-labeled (`hardware/gpu: intel-b580`), and tainted
+**Outcome:** Working and verified — it took three attempts. GPU worker node joined,
+labeled (`hardware/gpu: intel`), and tainted
 (`dedicated=transcode:NoSchedule`) so it's exclusively used by the Tdarr
 node pod — this also fixed an early incident where a master reboot caused
 general workloads to schedule onto the untainted GPU node and choke.
-Transcoding at ~1500 fps vs. ~400 fps on the previous A310.
+Transcoding at ~1500 fps vs. ~400 fps on the previous GPU.
 
 Landed on Tdarr's **mapped** mode: both the media library and the
 transcode cache NFS-mounted at the exact paths the TrueNAS Tdarr Server
@@ -151,14 +151,14 @@ first:
    with inconsistent file ownership, so no narrower ACE reliably covered
    it).
 2. *Unmapped* — switched to avoid the NFS/ACL complexity entirely: local
-   `hostPath` cache on the B580's own disk, file transfer over Tdarr's
+   `hostPath` cache on the GPU worker's own disk, file transfer over Tdarr's
    HTTP API. Architecturally the "correct" fit for a genuinely separate
    machine — but free-tier unmapped nodes cap video files at 10MB, a hard
    stop for real media without a paid Tdarr Pro license. Reverted.
 
 Mapped, both paths mounted, is where it landed — and where it's staying.
-Soak-tested for 15+ minutes with both transcode nodes (the original A310
-and the new B580) running concurrently against the same queue: no errors,
+Soak-tested for 15+ minutes with both transcode nodes (the original previous GPU
+and the new GPU worker) running concurrently against the same queue: no errors,
 throughput around one full episode transcoded per minute. Backlog
 clearing is now realistic on a timescale that matters. Full narrative,
 including both wrong turns, in `cluster/apps/tdarr/node-join.md`.

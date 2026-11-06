@@ -1,13 +1,13 @@
-# Joining the B580 box to the cluster
+# Joining the GPU worker node to the cluster
 
-**Status: done and verified.** The B580 node is joined, labeled, tainted,
+**Status: done and verified.** The GPU worker node is joined, labeled, tainted,
 and running the Tdarr Node deployment against the TrueNAS Tdarr Server in
 **mapped** mode — both the media library and the transcode cache
 NFS-mounted at the same paths the server sees. Confirmed stable over a
-15+ minute soak with both transcode nodes (A310 + B580) running
+15+ minute soak with both transcode nodes (previous GPU + GPU worker) running
 concurrently, no errors — pipeline is now knocking out roughly a full
 episode per minute, so the media library backlog is in good shape to
-clear. Transcodes land around 1500 fps vs. ~400 fps on the old A310 alone.
+clear. Transcodes land around 1500 fps vs. ~400 fps on the previous GPU alone.
 This doc is kept as the record of two wrong turns before landing here
 (mapped-without-cache-mount, then unmapped) — both worth understanding
 before touching this again.
@@ -17,7 +17,7 @@ membership, not application state.
 
 ## 1. Confirm GPU is usable on the host first
 
-Before touching K3s, verify the Arc B580 actually hardware-transcodes on the
+Before touching K3s, verify the Arc GPU worker actually hardware-transcodes on the
 bare host:
 
 ```
@@ -39,7 +39,7 @@ the join token:
 sudo cat /var/lib/rancher/k3s/server/node-token
 ```
 
-On the B580 box:
+On the GPU worker node:
 
 ```
 curl -sfL https://get.k3s.io | K3S_URL=https://192.0.2.10:6443 \
@@ -51,7 +51,7 @@ curl -sfL https://get.k3s.io | K3S_URL=https://192.0.2.10:6443 \
 From any machine with kubectl access:
 
 ```
-kubectl label node <b580-hostname> hardware/gpu=intel-b580
+kubectl label node <gpu-worker-hostname> hardware/gpu=intel
 ```
 
 `node.yaml`'s `nodeSelector` targets this label — but a label alone only
@@ -65,7 +65,7 @@ onto gpu-worker, which choked.
 ## 4. Taint the node so it's dedicated to transcode only
 
 ```
-kubectl taint nodes <b580-hostname> dedicated=transcode:NoSchedule
+kubectl taint nodes <gpu-worker-hostname> dedicated=transcode:NoSchedule
 ```
 
 `node.yaml` carries a matching `tolerations` entry, so the tdarr pod is the
@@ -74,7 +74,7 @@ repelled unless it's given the same toleration on purpose.
 
 If you already have stray pods sitting on gpu-worker from before the taint
 existed (check with
-`kubectl get pods -A -o wide --field-selector spec.nodeName=<b580-hostname>`),
+`kubectl get pods -A -o wide --field-selector spec.nodeName=<gpu-worker-hostname>`),
 the taint won't evict them retroactively — `NoSchedule` only blocks new
 placements. Delete the stray pods once the master is healthy again and
 their controllers (Deployments) will recreate them; with the taint in place
@@ -105,7 +105,7 @@ fine for a while, then quietly breaks:
   unmapped nodes cap video files at 10MB**. Tdarr Pro removes that cap;
   without it, unmapped mode is unusable for real media.
 
-We tried unmapped first, since the B580 is genuinely a separate machine —
+We tried unmapped first, since the GPU worker is genuinely a separate machine —
 architecturally cleaner, no NFS/ACL story at all. Hit the 10MB wall
 immediately on the first real file (346MB), and without a Pro license,
 that's a hard stop. Landed on **mapped**, which is free, and which we'd
@@ -158,7 +158,7 @@ written only by Tdarr, so it likely only needs the Maproot fix — verify
 this once its NFS share exists rather than assuming.
 
 **Second attempt — unmapped.** Switched to avoid the NFS/ACL complexity
-entirely: local `hostPath` cache on the B580's own disk, HTTP transfer to
+entirely: local `hostPath` cache on the GPU worker's own disk, HTTP transfer to
 the server. Architecturally the "correct" choice for a separate machine,
 but free-tier unmapped nodes cap video files at 10MB — discovered this
 the moment a 346MB episode failed with a Tdarr Pro upsell message. Reverted.
@@ -186,3 +186,12 @@ This intentionally only puts the Tdarr *node* in K3s. The Tdarr *server*
 stays exactly where it is on TrueNAS — no reason to move it, and per the
 current plan the rest of the media stack isn't migrating into K3s until
 after the move. See ADR-005 in the root README.
+
+## Planned storage and worker expansion
+
+Move the shared transcode workspace out of the legacy configs directory and add
+GPU worker capacity. Preserve matching cache and library paths across server and
+workers, then verify processing and copy-back before retiring the old location.
+The new worker is also intended to support flexible Emby placement; resource
+allocation and processing schedules must account for simultaneous streaming.
+Current manifests retain the existing storage paths and worker placement.

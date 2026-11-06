@@ -1,15 +1,9 @@
 # Traefik source-address preservation
 
-Current manifest: `externalTrafficPolicy: Local`, Traefik pinned to `control-plane`,
-JSON access logging and pod-level BBR. Operator migration checks on 2026-11-04/05
-confirmed public playback and reported BBR before the final reboot. The diagnostic
-observations below are historical; this documentation pass did not inspect live state.
-
-Historical observation (2026-10-21): router target control-plane is 192.0.2.10; Traefik is ready
-there at pod IP 10.42.0.73. Service externalTrafficPolicy is Cluster, no node
-selector or existing HelmChartConfig, neither node has an ExternalIP. A remote
-Emby session reportedly shows 10.42.0.1 and is classified local. Source NAT is
-a supported hypothesis, not a confirmed root cause from packet/header capture.
+Traefik receives incoming web requests and routes them to application Services.
+The current settings keep it on `control-plane`, preserve incoming client IPs
+with `externalTrafficPolicy: Local`, enable structured access logs, and select
+BBR (a TCP congestion-control algorithm) inside its pod.
 
 This HelmChartConfig extends K3s's existing Helm release. It does not install a
 second Traefik or take ownership of the generated Deployment/Service in Argo.
@@ -55,11 +49,7 @@ References:
 - https://docs.k3s.io/add-ons/helm
 - https://kubernetes.io/docs/tutorials/services/source-ip/
 
-Separate maintenance observation: worker reports Kubernetes v1.36.3+k3s1 while
-master reports v1.35.5+k3s1. Review supported version skew independently; no
-cluster version changes are included in this proposal.
-
-## Playback telemetry (2026-10-26)
+## Access logs
 
 JSON access logs are enabled through the HelmChartConfig. Keep response status,
 bytes, client addresses and origin/downstream timing for correlation with Emby
@@ -73,23 +63,12 @@ The log buffer holds 100 entries; wait for traffic to fill it before concluding
 that logging is broken. Pod-log rotation and bounded collection can lose records.
 Rollback through Git by setting logs.access.enabled=false and checking rollout.
 
-Operational note: the user confirms Tdarr's 06:00–10:00 America/New_York window
-(03:00–07:00 America/Los_Angeles) is accepted maintenance. The October26 app-SSD
-latency/API-timeout incident overlaps it; Tdarr attribution is likely per the
-operator but not independently proven by per-process I/O. Do not change that
-schedule or treat these samples as normal serving-period performance.
-
-## BBR delivery trial (2026-10-28)
+## BBR configuration
 
 Repo configuration requests BBR in Traefik's pod network namespace. This applies
 across Traefik TCP routes, including Emby and speedtest, not HTTP/3/UDP. Host TCP
 defaults are unchanged. The operator later reported the pod using BBR during migration. A causal
 streaming-performance improvement has not been established.
-
-Controlled single-TCP 30-second uploads at a 100 Mbps cap, CUBIC/BBR/BBR/CUBIC:
-K3s to Toronto CUBIC 5.33/4.78 Mbps versus BBR 99.64/99.73; San Francisco
-CUBIC 27.04/24.60 versus BBR 99.96/99.54. NAS tests also improved. Retransmissions
-persisted; these tests do not identify an ISP fault or prove playback is fixed.
 
 Fresh rebuild: follow the [bootstrap toolkit guide](../../../bootstrap/README.md).
 The guided entry point no longer installs anything automatically. Use explicit

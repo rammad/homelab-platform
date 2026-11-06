@@ -17,7 +17,7 @@ Before publishing:
 Current checks (2026-11-06): public Kustomize entry points render; private overlays
 restore the original rendered objects. Gitleaks identified one reviewed false
 positive: the `UN_SONARR_0_API_KEY` Secret reference in Unpackerr, not a credential
-value. Human review remains required. The assistant has not committed, pushed or
+value. Human review is required before publication and deployment. The assistant has not committed, pushed or
 published this directory.
 
 A private deployment repository may still contain historical credentials. Moving

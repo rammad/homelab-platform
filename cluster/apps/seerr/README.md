@@ -1,8 +1,8 @@
 # Seerr
 
-Request management in `tools`, migrated from Jellyseerr. Configuration and its
+Media request management in `tools`. Configuration and its
 SQLite database live at `/mnt/application-pool/k3s-app-data/seerr` on TrueNAS. The app
-runs as UID/GID 1000, with one replica and Recreate strategy. No media mount is
+runs as UID/GID 1000, with one replica and `Recreate` strategy (stop the old pod before starting the new one). No media mount is
 needed. The current image version is declared in `deployment.yaml`.
 
 ## Access and ownership
@@ -13,8 +13,7 @@ needed. The current image version is declared in `deployment.yaml`.
 - Registration: `bootstrap/seerr-application.yaml`
 
 The Seerr Application owns its workload, storage, Service, certificate and
-ingress. `edge.yaml` routes directly to the Service; the old external-backend
-proxy is retired. The checked-in registration uses manual sync; live policy
+ingress. `edge.yaml` routes directly to the Service. The checked-in registration uses manual sync; live policy
 must be inspected before operational changes. Scaling Seerr to zero stops both
 LAN and public access.
 
@@ -35,17 +34,14 @@ Check login and Sonarr/Radarr connectivity after changes. A real request can
 trigger downloads and notifications; use a deliberately selected test request.
 API keys and private integration settings stay in the config, not Git.
 
-## Data and verification
+## Data and recovery
 
 The copied Jellyseerr database was upgraded during Seerr startup. Do not copy
 the old database over the running installation or open the upgraded database
 with an older Jellyseerr image. Take consistent backups and retain a compatible
 image for restoration. Single-writer operation reduces overlap but does not
-provide fencing or guarantee SQLite safety on NFS.
-
-The operator confirmed request-to-library delivery on 2026-11-04 and public
-routing after ownership consolidation on 2026-11-05. These are functional tests,
-not proof of every notification, user setting or failure-recovery path.
+block an unreachable old node from writing to storage (fencing), or guarantee
+SQLite safety on NFS.
 
 See [state recovery](../../../docs/operations/application-state-recovery.md),
 [the migration case study](../../../docs/case-studies/truenas-to-k3s.md), and the

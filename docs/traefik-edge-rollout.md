@@ -43,7 +43,7 @@ of another Argo application's resources.
 Do not copy manifests to the VM or use kubectl apply for the workloads.
 There is one initial registration step after the reviewed commit is pushed:
 in Argo's New App UI create `edge-applications`, project `default`, repository
-`https://github.com/REPLACE_ME/homelab-platform.git`, revision `HEAD`, path
+`https://github.com/rammad/homelab-platform.git`, revision `HEAD`, path
 `argocd/edge-applications`, destination `https://kubernetes.default.svc`, namespace
 `argocd`, manual sync. Match bootstrap/edge-applications.yaml, including the
 FailOnSharedResource sync option. Alternatively register that root definition
@@ -289,7 +289,7 @@ backend apps. All other supplied resource exclusions are retained.
   are explicitly deferred by the operator. Track both as follow-up work. A main
   80/443 cutover before those routes exist will interrupt their current public
   access; confirm that consequence at cutover. NPM remains available for rollback.
-- The operator reported unplugging the B580 worker and intends to reconnect it.
+- The operator reported unplugging the GPU worker node and intends to reconnect it.
   Tdarr worker recovery is not yet verified; no migration fault was established.
 - Next: controlled remote HTTPS playback through a temporary router TCP port
   forwarded to Traefik 443, leaving current public 80/443 on NPM. Confirm an

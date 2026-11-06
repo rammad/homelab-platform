@@ -19,7 +19,7 @@ A private overlay references a pinned public commit, for example:
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - https://github.com/REPLACE_ME/homelab-platform.git//cluster/apps/emby?ref=FULL_COMMIT_SHA
+  - https://github.com/rammad/homelab-platform.git//cluster/apps/emby?ref=FULL_COMMIT_SHA
 patches:
   - target:
       kind: PersistentVolume
@@ -51,3 +51,11 @@ existing private toolkit or an appropriately customized checkout; this candidate
 does not automatically merge a separate private overlay when registering apps.
 Secret prompts provision cluster Secrets; neither domain names nor NFS paths can
 be substituted everywhere using Kubernetes Secret references.
+
+## Private applications
+
+Site-specific applications can remain entirely in the private repository, with
+their own source, registrations and backup jobs. They do not need public bases.
+The private backup overlay can add exporters and extend monitoring while the
+public base remains independent of those applications. Keep such extensions
+under the existing backup Application owner to avoid competing reconciliation.

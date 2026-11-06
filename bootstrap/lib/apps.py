@@ -3,7 +3,7 @@ import base64
 import json
 from .common import ROOT, Failure, confirm, hidden, say, yaml_module
 
-REPO = 'https://github.com/REPLACE_ME/homelab-platform.git'
+REPO = 'https://github.com/rammad/homelab-platform.git'
 
 def names():
     return sorted([p.name for p in (ROOT / 'cluster/apps').iterdir() if p.is_dir()] + ['database-backups'])

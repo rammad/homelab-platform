@@ -89,7 +89,7 @@ a common mount path alone does not prove they are working.
 ## Emby, Tdarr and qBittorrent
 
 Emby configuration lives under /mnt/application-pool/k3s-app-data/emby and includes
-users/watch history/library state. Verify B580 device access and current node
+users/watch history/library state. Verify GPU worker device access and current node
 GPU group IDs rather than assuming another host has the same IDs. Check direct
 play and forced hardware transcode, then public playback and saved Emby URLs
 in Seerr/Tracearr. Review the transcode temporary path separately from media.

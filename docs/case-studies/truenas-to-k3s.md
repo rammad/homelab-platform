@@ -13,8 +13,8 @@ application state and media on TrueNAS. Preserve existing libraries, accounts,
 queues and torrent seeding state. Keep public streaming available during
 preparation, and schedule disruptive cutovers around active streams.
 
-The control plane moved from a TrueNAS VM to a physical MS-02 Ultra while
-retaining its node identity and LAN address. A separate Intel B580 worker serves
+The control plane moved from a TrueNAS VM to a physical control-plane node while
+retaining its node identity and LAN address. A separate GPU worker node serves
 GPU workloads. Shared NAS storage made replacing compute simpler, but retained
 a shared failure dependency. This is not a highly available cluster.
 
@@ -76,7 +76,7 @@ Emby was staged without starting it while streams were active, then copied
 with the source stopped. Public domain playback was confirmed. A supplied
 FFmpeg log showed hevc_qsv decode/encode and vpp_qsv processing through the GPU;
 this establishes hardware acceleration for that test, not every codec/client.
-Tdarr's server UI and B580 connection were confirmed after migration; a complete
+Tdarr's server UI and GPU worker connection were confirmed after migration; a complete
 post-migration transcode and copy-back still needs explicit verification.
 
 ## Transfer GitOps ownership without deleting live routes
@@ -97,20 +97,13 @@ proxies were then removed. The operator reported all public routes working after
 final cleanup. Both old names are recorded here so the lesson survives removal
 of the one-time handoff script.
 
-TiasTube also accumulated obsolete hash-versioned ConfigMaps. Comparing the
-running pod and retained ReplicaSet references allowed removal of unused maps
-and three zero-replica historical ReplicaSets. Argo then reported Synced and the
-browser UI worked. That cleanup intentionally removed old rollout history;
-Git can recreate an older code revision if compatible with current data.
-
 ## Evidence and remaining limits
 
 - Operator-confirmed: control-plane reboot, Emby cellular/domain playback,
   Immich upload, Nextcloud web/Nautilus/test-file sync, Seerr request through
   indexers/downloaders into the library, and Radarr import from NZBGet.
 - Supplied log evidence: Emby hardware-accelerated transcode for one test.
-- Operator-confirmed: edge consolidation/public-route checks and TiasTube
-  Synced/browser check on 2026-11-05.
+- Operator-confirmed: edge consolidation/public-route checks on 2026-11-05.
 - Not established by these checks: HA/failover, hardlink behavior, complete
   backup restoration, all torrent tracker/kill-switch scenarios, or a completed
   post-migration Tdarr job. Do not present these as verified portfolio results.

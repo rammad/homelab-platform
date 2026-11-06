@@ -11,6 +11,10 @@ private configuration or credentials.
 
 ## Download performance over NFS
 
+ArticleCache holds downloaded article data in RAM before disk writes. Increasing
+it can reduce small writes over network storage; it cannot raise the sustained
+speed above the slowest provider, network or storage component.
+
 Operator observation, 2026-11-06: after migration, download speed stayed below
 approximately 5 MB/s. Configuration showed `ArticleCache=0`, `DirectWrite=yes`,
 `WriteBuffer=1024`, `DownloadRate=0`, and 20 server connections. Intermediate
@@ -27,4 +31,3 @@ Deployment YAML. Preserve it when restoring configuration, and set it explicitly
 for a fresh installation. Save/reload through NZBGet's UI; avoid editing its
 configuration file while it is running. The cache consumes additional RAM.
 
-No image change, node restart or Emby interruption was needed for this fix.

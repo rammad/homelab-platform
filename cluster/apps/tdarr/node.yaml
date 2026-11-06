@@ -1,21 +1,21 @@
-# B580 mapped worker for the in-cluster Tdarr server.
+# GPU mapped worker for the in-cluster Tdarr server.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: tdarr-node-b580
+  name: tdarr-node-gpu
   namespace: media
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: tdarr-node-b580
+      app: tdarr-node-gpu
   template:
     metadata:
       labels:
-        app: tdarr-node-b580
+        app: tdarr-node-gpu
     spec:
       nodeSelector:
-        hardware/gpu: intel-b580
+        hardware/gpu: intel
       tolerations:
         - key: "dedicated"
           operator: "Equal"
@@ -27,9 +27,9 @@ spec:
           image: ghcr.io/haveagitgat/tdarr_node:3.01.00
           env:
             - name: nodeID
-              value: "b580-transcode-01"
+              value: "gpu-transcode-01"
             - name: nodeName
-              value: "b580-transcode-01"
+              value: "gpu-transcode-01"
             - name: serverIP
               value: "tdarr-server.media.svc.cluster.local"
             - name: serverPort

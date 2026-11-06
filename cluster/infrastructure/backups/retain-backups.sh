@@ -4,7 +4,7 @@ set -eu
 folder=$1
 current=$2
 archive=$3
-case "$archive" in database.dump|tiastube.tar.gz|k3s.tar.gz) ;; *) exit 2 ;; esac
+case "$archive" in database.dump|k3s.tar.gz) ;; *) exit 2 ;; esac
 test ! -L "$folder"
 test "$(cat "$folder/../.backup-target")" = homelab-cluster-backups-v1
 eligible() {

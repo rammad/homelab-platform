@@ -1,7 +1,10 @@
 # Backups and Discord notifications
 
+Scheduled Kubernetes Jobs export application and cluster state to another NAS
+pool. A separate monitor reports failed or overdue backups to Discord. 
+
 As of **2026-11-05**, operator logs confirm successful manual backups for all
-five targets, and the operator reports their schedules enabled. Discord received
+four public targets, and the operator reports their schedules enabled. Discord received
 the monitor's connection message and its Job completed. The first overnight
 scheduled runs, live failure/recovery notification exercise and isolated restore
 drills remain unverified. Restore drills were deliberately deferred.
@@ -15,7 +18,6 @@ All schedules use `America/Los_Angeles`. Workloads remain online during export.
 | `immich-backup` | 01:00 | PostgreSQL database |
 | `tracearr-backup` | 01:20 | PostgreSQL/TimescaleDB database |
 | `nextcloud-backup` | 01:40 | PostgreSQL database |
-| `tiastube-backup` | 02:00 | SQLite database and `private/tracearr/tracearr.json` |
 | `k3s-backup` | 02:30 | SQLite control-plane state, server token and selected configuration |
 | `backup-monitor` | Every 5 minutes | Job/schedule checks and Discord state-change notifications |
 
@@ -103,7 +105,7 @@ there is no automatic rollback or destructive retry. It requires Argo CRDs.
 ## 3. Validate manually, then activate
 
 Run one backup at a time, replacing `immich` below with `tracearr`, `nextcloud`,
-`tiastube`, then `k3s`. Use a new Job name on every attempt:
+then `k3s`. Use a new Job name on every attempt:
 
 ```bash
 job="immich-backup-manual-$(date +%s)"
@@ -186,19 +188,13 @@ Roles/global grants and general app configs are not captured by these SQL dumps.
 Nextcloud stays online: its dump is not coordinated with user-file/config changes,
 so it is not a complete point-in-time recovery set.
 
-TiasTube uses SQLite's online backup API on its read-only NFS source, checks
-integrity and packages the database with its required private configuration.
-It fails if configuration changes during export. It starts with restricted root
-capabilities CHOWN/SETUID/SETGID to read root-owned state, then drops to 3900:3001
-before writing the destination. It has no API token or writable source mount.
-
 k3s runs only on the master. It uses SQLite's online backup API for `db/state.db`,
 checks integrity and the kine table, and includes the server token, server
 certificates/manifests, `/etc/rancher`, k3s systemd unit/env/drop-ins and kubelet
 configuration. Live WAL/SHM are excluded. Token rotation during export fails the
 job; avoid concurrent token/certificate/config changes because those files are
-not captured atomically with the database. It uses the same privilege handoff
-as TiasTube and never stops k3s.
+not captured atomically with the database. It reads the source with restricted root capabilities, then drops to the backup
+UID/GID before writing the destination. It never stops k3s.
 
 This exporter requires the default SQLite datastore and refuses etcd. Symlinks
 are preserved, not dereferenced; the actual server token is explicitly copied.
@@ -236,7 +232,7 @@ consistency. NAS snapshots/exports are administered in TrueNAS, outside bootstra
 ## Remaining recovery work
 
 - Verify first overnight schedules, snapshots and storage growth.
-- Restore all five targets into isolated environments; record results and time.
+- Restore all four public targets into isolated environments; record results and time.
 - Exercise Discord failure/recovery and add an independent outage heartbeat.
 - Add coordinated Nextcloud files/config/database recovery points.
 - Protect remaining app configs and irreplaceable assets with independent copies.

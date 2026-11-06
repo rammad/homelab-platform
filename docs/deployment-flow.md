@@ -7,7 +7,7 @@ no new live cluster inspection performed.
 
 Application workloads, Services, public routes, namespaces and static NFS
 PV/PVCs are defined under `cluster/`. The [main inventory](../README.md#applications)
-lists the migrated apps. Emby and the Tdarr worker target the B580 node; the Tdarr
+lists the migrated apps. Emby and the Tdarr worker target the GPU worker node; the Tdarr
 server also runs in k3s. Node configuration, NAS exports and private application
 state are not completely represented by these manifests.
 

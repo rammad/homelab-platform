@@ -1,7 +1,10 @@
 # Homelab setup toolkit
 
-A setup tool for hosts, applications and scheduled backup/notification jobs, and the existing GitOps
-manifests as the source of application configuration. Introduced 2026-11-05.
+A setup tool for first installation, replacement hosts and rebuilding after a
+major failure, with occasional provisioning of applications and scheduled backup
+jobs. It uses the existing GitOps manifests as its configuration source. Daily
+operation does not require it, and troubleshooting uses raw runbook commands.
+It prepares systems; it does not automatically restore application data.
 No LLM, cloud assistant or new Python framework is needed to run it.
 
 **Validation status (2026-11-05):** Local safety tests passed, along with Bash
@@ -181,8 +184,8 @@ Updates preserve unrelated keys/metadata and use a resourceVersion test to rejec
 concurrent changes. Updating a Secret does not rotate an upstream credential or
 restart a consumer: coordinate both sides and the maintenance window yourself.
 Whole-secret references without declared keys need a documented schema instead
-of guessed inputs. Hardcoded credentials in legacy manifests remain publication
-review work; this command does not automatically migrate or rotate them.
+of guessed inputs. This command does not migrate historical credentials or
+rotate credentials held by an upstream database or service.
 
 ## Layout and tests
 

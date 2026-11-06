@@ -5,4 +5,4 @@
 - Requests to implement features, prepare production, or add changes to this repository do not authorize commits or pushes.
 - Preserve unrelated edits and concurrent work.
 
-Source: explicit user instruction, 2026-10-29, in the TiasTube project task.
+Source: explicit user instruction, 2026-10-29, by the repository owner.

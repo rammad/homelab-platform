@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from urllib import request, parse
 
-APPS = ('immich', 'tracearr', 'nextcloud', 'tiastube', 'k3s')
+APPS = ('immich', 'tracearr', 'nextcloud', 'k3s')
 BASE = 'https://kubernetes.default.svc'
 API = '/apis/batch/v1/namespaces/backups/'
 STATE = '/api/v1/namespaces/backups/configmaps/backup-alert-state'
@@ -30,7 +30,7 @@ def evaluate(app, cron, jobs, previous, now):
             command = c.get('command', [])
             env = {e['name']: e.get('value') for e in c.get('env', [])}
             matching |= ('/scripts/backup-postgres.sh' in command and env.get('APP') == app)
-            matching |= (app in ('tiastube', 'k3s') and f'/scripts/backup-{app}.py' in command)
+            matching |= (app == 'k3s' and f'/scripts/backup-{app}.py' in command)
         if not matching:
             continue  # Exclude diagnostic and monitor Jobs.
         for condition in job.get('status', {}).get('conditions', []):
@@ -91,7 +91,7 @@ def main():
     crons = {c['metadata']['name']: c for c in api(API + 'cronjobs')['items']}
     jobs = api(API + 'jobs')['items']
     if not state.get('initialized'):
-        discord('Homelab backup monitoring connected. Checking Immich, Tracearr, Nextcloud, TiasTube and k3s every 5 minutes. Restore testing remains pending.')
+        discord('Homelab backup monitoring connected. Checking Immich, Tracearr, Nextcloud and k3s every 5 minutes. Restore testing remains pending.')
         state['initialized'] = True
     for app in APPS:
         previous = state.get(app, {})

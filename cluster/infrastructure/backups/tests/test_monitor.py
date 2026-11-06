@@ -42,7 +42,7 @@ class MonitorTests(unittest.TestCase):
         result=m.evaluate('k3s',CRON,[failed,success],{},NOW)[0]
         self.assertEqual(result['key'],'healthy')
         self.assertEqual(result['last_success'],m.timestamp('2026-11-06T10:00:00Z'))
-        self.assertEqual(m.evaluate('tiastube',CRON,[failed,success],{},NOW)[0]['last_success'],0)
+        self.assertEqual(m.evaluate('nextcloud',CRON,[failed,success],{},NOW)[0]['last_success'],0)
     def test_delivery_failure_does_not_save_state(self):
         calls=[]
         def api(path, body=None):

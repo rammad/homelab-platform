@@ -1,7 +1,7 @@
 # Arr stack
 
 Prowlarr, Sonarr, Radarr and Unpackerr run in `media`. Each has one replica and
-Recreate deployment strategy. Application config remains on TrueNAS under
+`Recreate` deployment strategy, which stops the old pod before starting its replacement. Application config remains on TrueNAS under
 `/mnt/application-pool/k3s-app-data/<app>`, using UID/GID 568. Sonarr, Radarr and
 Unpackerr share `/media-data`; Prowlarr does not need a media mount.
 
@@ -23,7 +23,7 @@ come from `media/unpackerr-credentials`. Other private API keys and downloader
 settings reside in the application configs, not this README.
 
 qBittorrent and NZBGet have separate app directories and Argo registrations.
-Their former NAS endpoints are obsolete. Preserve downloader categories and
+Preserve downloader categories and
 paths when changing connections: Sonarr uses `tv-sonarr` / `Series`, Radarr uses
 `radarr` / `Movies`. Inspect the live app settings before editing them.
 
@@ -50,13 +50,9 @@ extracted files, mounted paths and permissions when an import stalls. Unpackerr
 reporting “awaiting import” alone is not proof that usable video was extracted.
 Do not delete seeding jobs to clear import warnings.
 
-## Verification and recovery
+## Recovery
 
-Operator reports on 2026-11-04 confirmed a Seerr request passed through indexers
-and downloaders into the library, and a separate NZBGet movie import succeeded.
-Earlier copy checks covered SQLite integrity and selected library permissions;
-these do not establish durability through every NAS/network failure.
-
-See the [migration case study](../../../docs/case-studies/truenas-to-k3s.md) and
-[state recovery prerequisites](../../../docs/operations/application-state-recovery.md).
-An old stopped NAS database is a historical snapshot, not a current rollback copy.
+Restore matching application configuration, database state and media paths.
+See the [state recovery prerequisites](../../../docs/operations/application-state-recovery.md).
+Migration history is in the [case study](../../../docs/case-studies/truenas-to-k3s.md).
+An old stopped NAS database is not a current rollback copy.

@@ -1,10 +1,13 @@
 # OpenSpeedTest
 
-The openspeedtest Argo Application owns the workload, Service, Certificate,
-Ingress and TLSOption. Public HTTPS routes directly to tools/openspeedtest:3000.
-The HTTP/1.1 TLS option is retained from the existing deployment.
+The `openspeedtest` Argo Application owns the workload, Service, certificate,
+ingress route and TLS settings. Public HTTPS routes directly to the application's
+Service in `tools` on port 3000. The TLS option limits negotiation to HTTP/1.1.
 
-Ownership consolidation completed 2026-11-05, with public routes verified by
-the operator. The live legacy owner was `open-speedtest`; `edge-speedtest` was
-also present in earlier repository definitions. See the
-[handoff record](../../../docs/case-studies/truenas-to-k3s.md).
+Its registration is in `argocd/edge-applications/openspeedtest.yaml`, managed by
+the `edge-applications` parent. That directory groups registrations; it does not
+create a second edge proxy or a separate route owner.
+
+Review changes in Argo, then test the public page and an intentional speed test.
+A speed test consumes network capacity, so choose an appropriate time. No
+persistent application data needs to be restored for this service.
