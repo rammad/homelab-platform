@@ -1,0 +1,72 @@
+# Shared volumes for the Tdarr node, running MAPPED (see node-join.md).
+# Both the library AND the transcode cache have to be NFS-mounted at the
+# exact same in-container path the Tdarr SERVER sees them at — mapped mode
+# assumes server and node share a filesystem for BOTH paths, not just the
+# library. Missing the cache half of this is what broke the first attempt:
+# transcodes completed fine, then failed silently when the server tried to
+# move the output from a cache path it couldn't actually see.
+#
+# 1. Media library
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: tdarr-media-library-pv
+spec:
+  capacity:
+    storage: 4Ti # nominal — TrueNAS/NFS doesn't actually enforce this
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  nfs:
+    path: /mnt/storage-pool/media-data
+    server: 192.0.2.30
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tdarr-media-library-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: ""
+  resources:
+    requests:
+      storage: 4Ti
+  volumeName: tdarr-media-library-pv
+---
+# 2. Transcode cache — confirmed against the TrueNAS Tdarr Server app's
+# "Tdarr Transcode Storage" config: Host Path /mnt/application-pool/configs/tdarr/temp,
+# mounted inside the server's own container at /temp (matches librarySettings
+# "cache":"/temp" and worker log cache folder paths seen in job logs).
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: tdarr-cache-pv
+spec:
+  capacity:
+    storage: 100Gi # nominal
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  nfs:
+    path: /mnt/application-pool/configs/tdarr/temp
+    server: 192.0.2.30
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tdarr-cache-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: ""
+  resources:
+    requests:
+      storage: 100Gi
+  volumeName: tdarr-cache-pv

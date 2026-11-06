@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: edge-argocd-settings
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/REPLACE_ME/homelab-platform.git
+    targetRevision: HEAD
+    path: cluster/infrastructure/argocd-settings
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      enabled: true
+      prune: false
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+    - FailOnSharedResource=true
+    - ServerSideApply=true
+    - DisableClientSideApplyMigration=true

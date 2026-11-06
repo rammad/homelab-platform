@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tiastube
+  namespace: tools
+spec:
+  replicas: 1
+  # SQLite has one owner. Never overlap old and new app pods during rollout.
+  strategy:
+    type: Recreate
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: tiastube
+  template:
+    metadata:
+      labels:
+        app: tiastube
+    spec:
+      enableServiceLinks: false
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: tiastube
+          image: python:3.13-slim@sha256:2d44738ebf4ce5f63b9d9ea871e9c7cfdc0426f7b0c97cac915fd88ded1d86bb
+          command: [python, /app/app.py]
+          ports:
+            - name: http
+              containerPort: 8765
+          env:
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: TIASTUBE_MODE
+              value: production
+            - name: TIASTUBE_DB
+              value: /data/tracearr.sqlite3
+            - name: TIASTUBE_HTTP_PORT
+              value: "8765"
+            - name: TIASTUBE_BIND
+              value: 0.0.0.0
+            - name: TIASTUBE_ALLOWED_HOSTS
+              value: "192.0.2.10:30865,127.0.0.1:8765,localhost:8765"
+            - name: TIASTUBE_ALLOWED_ORIGINS
+              value: "http://192.0.2.10:30865,http://127.0.0.1:8765,http://localhost:8765"
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            failureThreshold: 60
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 6
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: code
+              mountPath: /app
+              readOnly: true
+            - name: static
+              mountPath: /app/static
+              readOnly: true
+            - name: data
+              mountPath: /data
+            - name: temporary
+              mountPath: /tmp
+      volumes:
+        - name: code
+          configMap:
+            name: tiastube-code
+        - name: static
+          configMap:
+            name: tiastube-static
+        - name: data
+          persistentVolumeClaim:
+            claimName: tiastube-data
+        - name: temporary
+          emptyDir: {}

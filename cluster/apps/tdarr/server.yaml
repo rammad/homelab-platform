@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tdarr-server
+  namespace: media
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: tdarr-server
+  template:
+    metadata:
+      labels:
+        app: tdarr-server
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      nodeSelector:
+        kubernetes.io/hostname: control-plane
+      containers:
+      - name: server
+        image: ghcr.io/haveagitgat/tdarr:3.01.00@sha256:5b3b8d4e54f41738d12ff71705cf8eb8e90fcbcc05209c331853aef119879992
+        env:
+        - {name: PUID, value: '568'}
+        - {name: PGID, value: '568'}
+        - {name: TZ, value: America/New_York}
+        - {name: serverIP, value: '0.0.0.0'}
+        - {name: serverPort, value: '30029'}
+        - {name: webUIPort, value: '30088'}
+        - {name: internalNode, value: 'false'}
+        - {name: inContainer, value: 'true'}
+        ports:
+        - {name: ui, containerPort: 30088}
+        - {name: api, containerPort: 30029}
+        readinessProbe:
+          tcpSocket: {port: ui}
+        volumeMounts:
+        - {name: state, subPath: config, mountPath: /app/configs}
+        - {name: state, subPath: server, mountPath: /app/server}
+        - {name: state, subPath: logs, mountPath: /app/logs}
+        - {name: library, mountPath: /media-data}
+        - {name: cache, mountPath: /temp}
+      volumes:
+      - name: state
+        persistentVolumeClaim: {claimName: tdarr-server-state}
+      - name: library
+        persistentVolumeClaim: {claimName: tdarr-media-library-pvc}
+      - name: cache
+        persistentVolumeClaim: {claimName: tdarr-cache-pvc}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tdarr-server
+  namespace: media
+spec:
+  selector: {app: tdarr-server}
+  ports:
+  - {name: api, port: 30029, targetPort: api}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tdarr-ui
+  namespace: media
+spec:
+  type: NodePort
+  selector: {app: tdarr-server}
+  ports:
+  - {name: ui, port: 30088, targetPort: ui, nodePort: 30088}

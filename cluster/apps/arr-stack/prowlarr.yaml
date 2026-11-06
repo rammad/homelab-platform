@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prowlarr
+  namespace: media
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: prowlarr
+  template:
+    metadata:
+      labels:
+        app: prowlarr
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      nodeSelector:
+        kubernetes.io/hostname: control-plane
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 568
+        runAsGroup: 568
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+      - name: check-config
+        image: ghcr.io/home-operations/prowlarr:2.7.0.5723@sha256:fcf7498692f97698ea8b8f7078a0f81120a16e7354e4c232b5e3810e3e783dff
+        command:
+        - /bin/sh
+        - -ec
+        - test -s /config/config.xml && test -s /config/prowlarr.db && test -w /config/prowlarr.db
+          && test -w /config
+        securityContext: &id001
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts: &id002
+        - name: config
+          mountPath: /config
+      containers:
+      - name: prowlarr
+        image: ghcr.io/home-operations/prowlarr:2.7.0.5723@sha256:fcf7498692f97698ea8b8f7078a0f81120a16e7354e4c232b5e3810e3e783dff
+        imagePullPolicy: IfNotPresent
+        securityContext: *id001
+        env:
+        - name: TZ
+          value: America/Los_Angeles
+        - name: PROWLARR__SERVER__PORT
+          value: '9696'
+        - name: PROWLARR__SERVER__BINDADDRESS
+          value: '*'
+        - name: PROWLARR__SERVER__ENABLESSL
+          value: 'false'
+        ports:
+        - name: http
+          containerPort: 9696
+        readinessProbe:
+          tcpSocket:
+            port: http
+          periodSeconds: 5
+          timeoutSeconds: 3
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            memory: 2Gi
+        volumeMounts: *id002
+      volumes:
+      - name: config
+        persistentVolumeClaim:
+          claimName: prowlarr-config

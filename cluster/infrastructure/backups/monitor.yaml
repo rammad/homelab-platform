@@ -1,0 +1,116 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: backup-monitor
+  namespace: backups
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-alert-state
+  namespace: backups
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: backup-monitor
+  namespace: backups
+rules:
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  - cronjobs
+  verbs:
+  - list
+- apiGroups:
+  - ''
+  resources:
+  - configmaps
+  resourceNames:
+  - backup-alert-state
+  verbs:
+  - get
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: backup-monitor
+  namespace: backups
+subjects:
+- kind: ServiceAccount
+  name: backup-monitor
+  namespace: backups
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: backup-monitor
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-monitor
+  namespace: backups
+spec:
+  schedule: '*/5 * * * *'
+  timeZone: America/Los_Angeles
+  suspend: false
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 120
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 240
+      template:
+        spec:
+          serviceAccountName: backup-monitor
+          automountServiceAccountToken: true
+          enableServiceLinks: false
+          restartPolicy: Never
+          securityContext:
+            runAsUser: 3900
+            runAsGroup: 3001
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+          - name: monitor
+            image: python:3.13-slim@sha256:2d44738ebf4ce5f63b9d9ea871e9c7cfdc0426f7b0c97cac915fd88ded1d86bb
+            command:
+            - python
+            - -B
+            - /scripts/backup-monitor.py
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                - ALL
+            resources:
+              requests:
+                cpu: 10m
+                memory: 32Mi
+              limits:
+                cpu: 100m
+                memory: 128Mi
+            volumeMounts:
+            - name: script
+              mountPath: /scripts
+              readOnly: true
+            - name: discord
+              mountPath: /discord
+              readOnly: true
+          volumes:
+          - name: script
+            configMap:
+              name: backup-monitor-script
+          - name: discord
+            secret:
+              secretName: backup-discord
+              items:
+              - key: webhook-url
+                path: webhook-url
+              defaultMode: 292

@@ -1,0 +1,19 @@
+# Runtime/private material stays outside this repository.
+__pycache__/
+*.py[cod]
+.env
+.env.*
+!.env.example
+*.dump
+*.sql
+*.sql.gz
+*.tar
+*.tar.gz
+*.oci
+*.key
+*.pem
+kubeconfig
+kubeconfig.*
+*credentials.private*
+*.private.json
+.gitleaks-report*

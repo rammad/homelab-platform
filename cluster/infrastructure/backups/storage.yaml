@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: backups
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: cluster-backups-pv
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes:
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ''
+  mountOptions:
+  - hard
+  - nfsvers=4.1
+  claimRef:
+    namespace: backups
+    name: cluster-backups
+  nfs:
+    server: 192.0.2.30
+    path: /mnt/storage-pool/cluster-backups
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cluster-backups
+  namespace: backups
+spec:
+  accessModes:
+  - ReadWriteMany
+  storageClassName: ''
+  volumeName: cluster-backups-pv
+  resources:
+    requests:
+      storage: 100Gi

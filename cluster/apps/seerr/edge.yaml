@@ -1,0 +1,41 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: jellyseerr-edge
+  namespace: tools
+spec:
+  secretName: jellyseerr-edge-tls
+  dnsNames:
+  - request.example.com
+  issuerRef:
+    name: letsencrypt-production
+    kind: ClusterIssuer
+  privateKey:
+    rotationPolicy: Always
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jellyseerr-edge-https
+  namespace: tools
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: 'true'
+    traefik.ingress.kubernetes.io/router.priority: '100'
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - request.example.com
+    secretName: jellyseerr-edge-tls
+  rules:
+  - host: request.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: seerr
+            port:
+              number: 5055

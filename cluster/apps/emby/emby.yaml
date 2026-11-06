@@ -1,0 +1,66 @@
+# Staged at zero replicas. GPU access follows the existing Tdarr worker.
+# Privileged mode grants broad host-device access; validate GPU transcoding at cutover.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: emby
+  namespace: media
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: emby
+  template:
+    metadata:
+      labels:
+        app: emby
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      nodeSelector:
+        hardware/gpu: intel-b580
+      containers:
+      - name: emby
+        image: emby/embyserver:4.10.2.0@sha256:7082c63b10a2fcb3805a7eaebba407d5723bc57c085c9f0b29b7d0a702765cc1
+        ports:
+        - name: http
+          containerPort: 8096
+        readinessProbe:
+          tcpSocket:
+            port: http
+        env:
+        - name: UID
+          value: '568'
+        - name: GID
+          value: '568'
+        - name: TZ
+          value: America/New_York
+        - name: GIDLIST
+          value: 44,992
+        volumeMounts:
+        - name: config
+          mountPath: /config
+        - name: media
+          mountPath: /media-data
+        - name: dri
+          mountPath: /dev/dri
+        securityContext:
+          privileged: true
+      volumes:
+      - name: config
+        persistentVolumeClaim:
+          claimName: emby-config
+      - name: media
+        persistentVolumeClaim:
+          claimName: arr-media
+      - name: dri
+        hostPath:
+          path: /dev/dri
+          type: Directory
+      tolerations:
+      - key: dedicated
+        operator: Equal
+        value: transcode
+        effect: NoSchedule

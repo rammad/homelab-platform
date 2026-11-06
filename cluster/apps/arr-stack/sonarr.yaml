@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sonarr
+  namespace: media
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: sonarr
+  template:
+    metadata:
+      labels:
+        app: sonarr
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      nodeSelector:
+        kubernetes.io/hostname: control-plane
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 568
+        runAsGroup: 568
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+      - name: check-config
+        image: ghcr.io/home-operations/sonarr:5.0.0.2701@sha256:1620725621cfda0360bd680dacf3246c4696c27c4b768b4346e07e8917e94499
+        command:
+        - /bin/sh
+        - -ec
+        - test -s /config/config.xml && test -s /config/sonarr.db && test -w /config/sonarr.db
+          && test -w /config && test -d /media-data/libraries && test -r /media-data/libraries
+        securityContext: &id001
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts: &id002
+        - name: config
+          mountPath: /config
+        - name: media
+          mountPath: /media-data
+      containers:
+      - name: sonarr
+        image: ghcr.io/home-operations/sonarr:5.0.0.2701@sha256:1620725621cfda0360bd680dacf3246c4696c27c4b768b4346e07e8917e94499
+        imagePullPolicy: IfNotPresent
+        securityContext: *id001
+        env:
+        - name: TZ
+          value: America/Los_Angeles
+        - name: SONARR__SERVER__PORT
+          value: '8989'
+        - name: SONARR__SERVER__BINDADDRESS
+          value: '*'
+        - name: SONARR__SERVER__ENABLESSL
+          value: 'false'
+        ports:
+        - name: http
+          containerPort: 8989
+        readinessProbe:
+          tcpSocket:
+            port: http
+          periodSeconds: 5
+          timeoutSeconds: 3
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            memory: 2Gi
+        volumeMounts: *id002
+      volumes:
+      - name: config
+        persistentVolumeClaim:
+          claimName: sonarr-config
+      - name: media
+        persistentVolumeClaim:
+          claimName: arr-media

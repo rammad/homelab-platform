@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflare-ddns
+  namespace: tools
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: cloudflare-ddns
+  template:
+    metadata:
+      labels:
+        app: cloudflare-ddns
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: control-plane
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: updater
+          image: favonia/cloudflare-ddns@sha256:5e61736b982b87d84a1120b4767c4deff0f2cc55ca3ee9dcb1dc58623039b5cb
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: CLOUDFLARE_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-ddns
+                  key: CLOUDFLARE_API_TOKEN
+            - name: DOMAINS
+              value: example.com
+            - name: PROXIED
+              value: 'false'
+            - name: IP6_PROVIDER
+              value: none
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi

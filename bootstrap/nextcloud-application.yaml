@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nextcloud
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/REPLACE_ME/homelab-platform.git
+    targetRevision: master
+    path: cluster/apps/nextcloud
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: data
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - FailOnSharedResource=true

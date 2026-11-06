@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tracearr-redis
+  namespace: tools
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tracearr-redis
+  template:
+    metadata:
+      labels:
+        app: tracearr-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:alpine@sha256:09160599abd229764c0fb44cb6be640294e1d360a54b19985ab4843dcf2d90f1
+          ports:
+            - containerPort: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tracearr-redis
+  namespace: tools
+spec:
+  selector:
+    app: tracearr-redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tracearr
+  namespace: tools
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tracearr
+  template:
+    metadata:
+      labels:
+        app: tracearr
+    spec:
+      containers:
+        - name: tracearr
+          image: ghcr.io/connorgallopo/tracearr:2.9.0@sha256:ad6564acea7bc2e00837bde2c93c60de688384b2795128e5c9e277fe51f5885a
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: tracearr-credentials
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              value: "redis://tracearr-redis:6379"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: tracearr-credentials
+                  key: JWT_SECRET
+            - name: COOKIE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: tracearr-credentials
+                  key: COOKIE_SECRET
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tracearr
+  namespace: tools
+spec:
+  selector:
+    app: tracearr
+  ports:
+    - port: 3000
+      targetPort: 3000

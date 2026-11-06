@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qbittorrent
+  namespace: media
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: qbittorrent
+  template:
+    metadata:
+      labels:
+        app: qbittorrent
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      nodeSelector:
+        kubernetes.io/hostname: control-plane
+      containers:
+      - name: qbittorrent
+        image: ghcr.io/hotio/qbittorrent:release-5.1.0@sha256:ad427d9f05bb709470adebf9d951b7ed208ad34a203d91064718a9d0eac5a1b8
+        ports:
+        - name: http
+          containerPort: 8080
+        readinessProbe:
+          tcpSocket:
+            port: http
+        env:
+        - name: PUID
+          value: '568'
+        - name: PGID
+          value: '568'
+        - name: UMASK
+          value: '002'
+        - name: TZ
+          value: America/New_York
+        - name: WEBUI_PORTS
+          value: 8080/tcp,8080/udp
+        - name: VPN_ENABLED
+          value: 'true'
+        - name: VPN_CONF
+          value: wg0
+        - name: VPN_PROVIDER
+          value: generic
+        - name: VPN_LAN_NETWORK
+          value: 192.0.2.0/24
+        - name: VPN_EXPOSE_PORTS_ON_LAN
+          value: ''
+        - name: VPN_AUTO_PORT_FORWARD
+          value: 'true'
+        - name: VPN_AUTO_PORT_FORWARD_TO_PORTS
+          value: '5687'
+        - name: VPN_KEEP_LOCAL_DNS
+          value: 'false'
+        - name: VPN_FIREWALL_TYPE
+          value: auto
+        - name: PRIVOXY_ENABLED
+          value: 'false'
+        - name: UNBOUND_ENABLED
+          value: 'false'
+        volumeMounts:
+        - name: config
+          mountPath: /config
+        - name: media
+          mountPath: /media-data
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+      volumes:
+      - name: config
+        persistentVolumeClaim:
+          claimName: qbittorrent-config
+      - name: media
+        persistentVolumeClaim:
+          claimName: arr-media
+      securityContext:
+        sysctls:
+        - name: net.ipv4.conf.all.src_valid_mark
+          value: '1'
+        - name: net.ipv6.conf.all.disable_ipv6
+          value: '1'

@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: radarr
+  namespace: media
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: radarr
+  template:
+    metadata:
+      labels:
+        app: radarr
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      nodeSelector:
+        kubernetes.io/hostname: control-plane
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 568
+        runAsGroup: 568
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+      - name: check-config
+        image: ghcr.io/home-operations/radarr:6.4.4.10685@sha256:be53998a2d39cfa3c3315b70c7509a6a1f2a10c3aee9337653efc9f4c970430e
+        command:
+        - /bin/sh
+        - -ec
+        - test -s /config/config.xml && test -s /config/radarr.db && test -w /config/radarr.db
+          && test -w /config && test -d /media-data/libraries && test -r /media-data/libraries
+        securityContext: &id001
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts: &id002
+        - name: config
+          mountPath: /config
+        - name: media
+          mountPath: /media-data
+      containers:
+      - name: radarr
+        image: ghcr.io/home-operations/radarr:6.4.4.10685@sha256:be53998a2d39cfa3c3315b70c7509a6a1f2a10c3aee9337653efc9f4c970430e
+        imagePullPolicy: IfNotPresent
+        securityContext: *id001
+        env:
+        - name: TZ
+          value: America/Los_Angeles
+        - name: RADARR__SERVER__PORT
+          value: '7878'
+        - name: RADARR__SERVER__BINDADDRESS
+          value: '*'
+        - name: RADARR__SERVER__ENABLESSL
+          value: 'false'
+        ports:
+        - name: http
+          containerPort: 7878
+        readinessProbe:
+          tcpSocket:
+            port: http
+          periodSeconds: 5
+          timeoutSeconds: 3
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            memory: 2Gi
+        volumeMounts: *id002
+      volumes:
+      - name: config
+        persistentVolumeClaim:
+          claimName: radarr-config
+      - name: media
+        persistentVolumeClaim:
+          claimName: arr-media

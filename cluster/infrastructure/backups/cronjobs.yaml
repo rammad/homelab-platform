@@ -1,0 +1,269 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: immich-backup
+  namespace: backups
+spec:
+  schedule: 0 1 * * *
+  timeZone: America/Los_Angeles
+  suspend: false
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          enableServiceLinks: false
+          nodeSelector:
+            kubernetes.io/hostname: control-plane
+          securityContext:
+            runAsUser: 3900
+            runAsGroup: 3001
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+          - name: backup
+            image: ghcr.io/immich-app/postgres:14-vectorchord0.5.3-pgvector0.8.1@sha256:5c87f5bf7fdd6d707a04e2594905316d34fe09baa4a86f292928a4878c5eb698
+            command:
+            - /bin/sh
+            - /scripts/backup-postgres.sh
+            env:
+            - name: APP
+              value: immich
+            - name: PGHOST
+              value: immich-db.data.svc.cluster.local
+            - name: PGCONNECT_TIMEOUT
+              value: '15'
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: immich-backup-db
+                  key: PGUSER
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: immich-backup-db
+                  key: PGPASSWORD
+            - name: PGDATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: immich-backup-db
+                  key: PGDATABASE
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                - ALL
+            resources:
+              requests:
+                cpu: 100m
+                memory: 128Mi
+              limits:
+                cpu: '1'
+                memory: 512Mi
+            volumeMounts:
+            - name: backups
+              mountPath: /backups
+            - name: script
+              mountPath: /scripts
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          volumes:
+          - name: backups
+            persistentVolumeClaim:
+              claimName: cluster-backups
+          - name: script
+            configMap:
+              name: postgres-backup-script
+          - name: tmp
+            emptyDir:
+              sizeLimit: 64Mi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: tracearr-backup
+  namespace: backups
+spec:
+  schedule: 20 1 * * *
+  timeZone: America/Los_Angeles
+  suspend: false
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          enableServiceLinks: false
+          nodeSelector:
+            kubernetes.io/hostname: control-plane
+          securityContext:
+            runAsUser: 3900
+            runAsGroup: 3001
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+          - name: backup
+            image: timescale/timescaledb:latest-pg18@sha256:4051ec6e2c6c5b31fe789cf2cd87991ee1490b312b77fe02efaf51bec84b89b7
+            command:
+            - /bin/sh
+            - /scripts/backup-postgres.sh
+            env:
+            - name: APP
+              value: tracearr
+            - name: PGHOST
+              value: tracearr-db.tools.svc.cluster.local
+            - name: PGCONNECT_TIMEOUT
+              value: '15'
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: tracearr-backup-db
+                  key: PGUSER
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: tracearr-backup-db
+                  key: PGPASSWORD
+            - name: PGDATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: tracearr-backup-db
+                  key: PGDATABASE
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                - ALL
+            resources:
+              requests:
+                cpu: 100m
+                memory: 128Mi
+              limits:
+                cpu: '1'
+                memory: 512Mi
+            volumeMounts:
+            - name: backups
+              mountPath: /backups
+            - name: script
+              mountPath: /scripts
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          volumes:
+          - name: backups
+            persistentVolumeClaim:
+              claimName: cluster-backups
+          - name: script
+            configMap:
+              name: postgres-backup-script
+          - name: tmp
+            emptyDir:
+              sizeLimit: 64Mi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nextcloud-backup
+  namespace: backups
+spec:
+  schedule: 40 1 * * *
+  timeZone: America/Los_Angeles
+  suspend: false
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          enableServiceLinks: false
+          nodeSelector:
+            kubernetes.io/hostname: control-plane
+          securityContext:
+            runAsUser: 3900
+            runAsGroup: 3001
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+          - name: backup
+            image: postgres:13.22
+            command:
+            - /bin/sh
+            - /scripts/backup-postgres.sh
+            env:
+            - name: APP
+              value: nextcloud
+            - name: PGHOST
+              value: nextcloud-db.data.svc.cluster.local
+            - name: PGCONNECT_TIMEOUT
+              value: '15'
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: nextcloud-backup-db
+                  key: PGUSER
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nextcloud-backup-db
+                  key: PGPASSWORD
+            - name: PGDATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: nextcloud-backup-db
+                  key: PGDATABASE
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                - ALL
+            resources:
+              requests:
+                cpu: 100m
+                memory: 128Mi
+              limits:
+                cpu: '1'
+                memory: 512Mi
+            volumeMounts:
+            - name: backups
+              mountPath: /backups
+            - name: script
+              mountPath: /scripts
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          volumes:
+          - name: backups
+            persistentVolumeClaim:
+              claimName: cluster-backups
+          - name: script
+            configMap:
+              name: postgres-backup-script
+          - name: tmp
+            emptyDir:
+              sizeLimit: 64Mi

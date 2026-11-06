@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: immich-server
+  namespace: data
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: immich-server
+  template:
+    metadata:
+      labels:
+        app: immich-server
+    spec:
+      containers:
+        - name: server
+          image: ghcr.io/immich-app/immich-server:release@sha256:c15bff75068effb03f4355997d03dc7e0fc58720c2b54ad6f7f10d1bc57efaa5
+          ports:
+            - containerPort: 2283
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: DB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: immich-credentials
+                  key: DB_URL
+            - name: REDIS_URL
+              value: "redis://immich-redis:6379"
+            - name: IMMICH_MACHINE_LEARNING_URL
+              value: "http://immich-machine-learning:3003"
+            - name: REDIS_HOSTNAME
+              value: "immich-redis"
+          volumeMounts:
+            - name: immich-storage
+              mountPath: /usr/src/app/upload
+      volumes:
+        - name: immich-storage
+          persistentVolumeClaim:
+            claimName: immich-storage-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: immich-server
+  namespace: data
+spec:
+  selector:
+    app: immich-server
+  ports:
+    - port: 2283
+      targetPort: 2283
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: immich-machine-learning
+  namespace: data
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: immich-machine-learning
+  template:
+    metadata:
+      labels:
+        app: immich-machine-learning
+    spec:
+      containers:
+        - name: machine-learning
+          image: ghcr.io/immich-app/immich-machine-learning:release@sha256:a2501141440f10516d329fdfba2c68082e19eb9ba6016c061ac80d23beadf7f3
+          ports:
+            - containerPort: 3003
+          volumeMounts:
+            - name: model-cache
+              mountPath: /cache
+      volumes:
+        - name: model-cache
+          emptyDir: {} # Temporary local storage for ML models
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: immich-machine-learning
+  namespace: data
+spec:
+  selector:
+    app: immich-machine-learning
+  ports:
+    - port: 3003
+      targetPort: 3003

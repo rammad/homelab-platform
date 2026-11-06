@@ -1,0 +1,14 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: immich-tls
+  namespace: data
+spec:
+  secretName: immich-tls
+  dnsNames:
+  - immich.example.com
+  issuerRef:
+    name: letsencrypt-production
+    kind: ClusterIssuer
+  privateKey:
+    rotationPolicy: Always

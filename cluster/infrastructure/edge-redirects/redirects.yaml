@@ -1,0 +1,29 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: edge-https-redirect
+  namespace: media
+spec:
+  redirectScheme:
+    scheme: https
+    port: '443'
+    permanent: false
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: edge-http-redirect
+  namespace: media
+spec:
+  entryPoints:
+  - web
+  routes:
+  - match: Host(`stream.example.com`) || Host(`request.example.com`) || Host(`immich.example.com`)
+      || Host(`tracearr.example.com`)
+    kind: Rule
+    priority: 10000
+    middlewares:
+    - name: edge-https-redirect
+    services:
+    - name: emby
+      port: 8096

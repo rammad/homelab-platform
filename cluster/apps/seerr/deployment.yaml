@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seerr
+  namespace: tools
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: seerr
+  template:
+    metadata:
+      labels:
+        app: seerr
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      shareProcessNamespace: true
+      nodeSelector:
+        kubernetes.io/hostname: control-plane
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+      - name: permissions
+        image: ghcr.io/seerr-team/seerr:v3.5.1
+        command:
+        - node
+        - -e
+        - "const fs = require('fs');\nfor (const f of ['/app/config/settings.json',\
+          \ '/app/config/db/db.sqlite3']) {\n  fs.accessSync(f, fs.constants.R_OK\
+          \ | fs.constants.W_OK);\n  if (!fs.statSync(f).size) throw new Error('Empty\
+          \ required file: '+f);\n}\nfor (const d of ['/app/config','/app/config/db','/app/config/logs','/app/config/cache'])\
+          \ {\n  const f=d+'/.seerr-permission-check-'+process.pid;\n  try {\n   \
+          \ fs.writeFileSync(f,'permission check',{flag:'wx',mode:0o600});\n    fs.renameSync(f,f+'.renamed');\n\
+          \    fs.unlinkSync(f+'.renamed');\n  } finally {\n    if(fs.existsSync(f))\
+          \ fs.unlinkSync(f);\n    if(fs.existsSync(f+'.renamed')) fs.unlinkSync(f+'.renamed');\n\
+          \  }\n}\nconsole.log('NFS read/write/rename/delete OK as UID '+process.getuid());\n"
+        securityContext: &id001
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts: &id002
+        - name: config
+          mountPath: /app/config
+      containers:
+      - name: seerr
+        image: ghcr.io/seerr-team/seerr:v3.5.1
+        securityContext: *id001
+        ports:
+        - name: http
+          containerPort: 5055
+        env:
+        - name: TZ
+          value: America/Los_Angeles
+        - name: PORT
+          value: '5055'
+        - name: LOG_LEVEL
+          value: info
+        volumeMounts: *id002
+        readinessProbe:
+          httpGet:
+            path: /api/v1/settings/public
+            port: http
+          periodSeconds: 10
+          timeoutSeconds: 5
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            memory: 2Gi
+      volumes:
+      - name: config
+        persistentVolumeClaim:
+          claimName: seerr-config

@@ -1,0 +1,32 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    service:
+      spec:
+        externalTrafficPolicy: Local
+    nodeSelector:
+      kubernetes.io/hostname: control-plane
+    # Requires bootstrap/configure-traefik-bbr.sh on the selected node.
+    podSecurityContext:
+      sysctls:
+        - name: net.ipv4.tcp_congestion_control
+          value: bbr
+    logs:
+      access:
+        enabled: true
+        format: json
+        bufferingSize: 100
+        fields:
+          general:
+            defaultmode: keep
+            names:
+              RequestPath: drop
+              RequestLine: drop
+              RequestAddr: drop
+              ClientUsername: drop
+          headers:
+            defaultmode: drop

@@ -1,0 +1,131 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: prowlarr-config-pv
+spec:
+  capacity:
+    storage: 10Gi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ''
+  mountOptions:
+  - nfsvers=4.1
+  - hard
+  nfs:
+    server: 192.0.2.30
+    path: /mnt/application-pool/k3s-app-data/prowlarr
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prowlarr-config
+  namespace: media
+spec:
+  accessModes:
+  - ReadWriteMany
+  storageClassName: ''
+  volumeName: prowlarr-config-pv
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: sonarr-config-pv
+spec:
+  capacity:
+    storage: 10Gi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ''
+  mountOptions:
+  - nfsvers=4.1
+  - hard
+  nfs:
+    server: 192.0.2.30
+    path: /mnt/application-pool/k3s-app-data/sonarr
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sonarr-config
+  namespace: media
+spec:
+  accessModes:
+  - ReadWriteMany
+  storageClassName: ''
+  volumeName: sonarr-config-pv
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: radarr-config-pv
+spec:
+  capacity:
+    storage: 10Gi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ''
+  mountOptions:
+  - nfsvers=4.1
+  - hard
+  nfs:
+    server: 192.0.2.30
+    path: /mnt/application-pool/k3s-app-data/radarr
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: radarr-config
+  namespace: media
+spec:
+  accessModes:
+  - ReadWriteMany
+  storageClassName: ''
+  volumeName: radarr-config-pv
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: arr-media-pv
+spec:
+  capacity:
+    storage: 4Ti
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ''
+  mountOptions:
+  - nfsvers=4.1
+  - hard
+  nfs:
+    server: 192.0.2.30
+    path: /mnt/storage-pool/media-data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: arr-media
+  namespace: media
+spec:
+  accessModes:
+  - ReadWriteMany
+  storageClassName: ''
+  volumeName: arr-media-pv
+  resources:
+    requests:
+      storage: 4Ti

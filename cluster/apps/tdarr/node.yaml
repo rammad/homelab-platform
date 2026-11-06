@@ -1,0 +1,110 @@
+# B580 mapped worker for the in-cluster Tdarr server.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tdarr-node-b580
+  namespace: media
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tdarr-node-b580
+  template:
+    metadata:
+      labels:
+        app: tdarr-node-b580
+    spec:
+      nodeSelector:
+        hardware/gpu: intel-b580
+      tolerations:
+        - key: "dedicated"
+          operator: "Equal"
+          value: "transcode"
+          effect: "NoSchedule"
+      containers:
+        - name: tdarr-node
+          # Upgrade the server and worker together.
+          image: ghcr.io/haveagitgat/tdarr_node:3.01.00
+          env:
+            - name: nodeID
+              value: "b580-transcode-01"
+            - name: nodeName
+              value: "b580-transcode-01"
+            - name: serverIP
+              value: "tdarr-server.media.svc.cluster.local"
+            - name: serverPort
+              value: "30029"
+            - name: inContainer
+              value: "true"
+            # Explicit, even though it's the default — after getting bitten
+            # once by an unset nodeType silently staying "mapped" when we
+            # meant unmapped, better to never rely on the default again.
+            - name: nodeType
+              value: "mapped"
+            - name: PUID
+              value: "568"
+            - name: PGID
+              value: "568"
+          volumeMounts:
+            - name: media-library
+              # Must match the path the Tdarr SERVER container sees the
+              # library at (its own internal Mount Path in the TrueNAS app
+              # config), NOT the underlying TrueNAS host path. The server's
+              # host path /mnt/storage-pool/media-data is mounted to
+              # /media-data inside its own container — Tdarr matches jobs
+              # between server and node by that string, so the node has to
+              # present the library at the identical path.
+              mountPath: /media-data
+            - name: cache
+              # Same deal as the library, but for the transcode cache. The
+              # server's "Tdarr Transcode Storage" host path
+              # (/mnt/application-pool/configs/tdarr/temp) is mounted at /temp
+              # inside the server's own container — confirmed against
+              # librarySettings.cache and worker log cache-folder paths.
+              # Missing this the first time is what broke mapped mode
+              # originally: transcodes completed, then failed silently
+              # when the server tried to move output from a cache path
+              # only the pod could see.
+              mountPath: /temp
+            - name: dri
+              mountPath: /dev/dri
+          # Simplest path to expose the Arc GPU's render node to the
+          # container. An Intel GPU device plugin + resource limit is the
+          # cleaner long-term approach but adds NFD/plugin install overhead
+          # this single-purpose node doesn't need yet.
+          #
+          # runAsUser/runAsGroup 0: the Tdarr SERVER (TrueNAS app) accesses
+          # both paths as root via Docker bind-mounts, so files end up
+          # owned/permissioned assuming root access. Our NFS mounts are a
+          # different access path — without this, the node either runs as
+          # the image's non-root default user, or root gets squashed to
+          # "nobody" server-side, and either way hits EACCES.
+          #
+          # This alone isn't sufficient. Getting real access to the LIBRARY
+          # also required, on the TrueNAS side:
+          #   1. NFS share: Maproot User/Group = root (disables root squash)
+          #   2. Dataset ACL: an explicit `everyone@` ACE (Modify), applied
+          #      recursively — media-data is also SMB-shared and written to
+          #      by 8+ different apps, so it uses NFSv4 ACLs, not plain
+          #      POSIX bits, and individual files are owned by whatever UID
+          #      the app that wrote them used.
+          # The CACHE path (application-pool/configs/tdarr/temp) is dedicated to
+          # Tdarr only and isn't SMB-shared, so it likely only needs the
+          # Maproot fix, not a broad ACE — but verify once the NFS share
+          # for it exists; don't assume.
+          # See node-join.md for the full story.
+          securityContext:
+            privileged: true
+            runAsUser: 0
+            runAsGroup: 0
+      volumes:
+        - name: media-library
+          persistentVolumeClaim:
+            claimName: tdarr-media-library-pvc
+        - name: cache
+          persistentVolumeClaim:
+            claimName: tdarr-cache-pvc
+        - name: dri
+          hostPath:
+            path: /dev/dri
+            type: Directory

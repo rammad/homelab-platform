@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nextcloud-cache
+  namespace: data
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: &id001
+      app: nextcloud-cache
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      nodeSelector:
+        kubernetes.io/hostname: control-plane
+      containers:
+      - name: nextcloud-cache
+        image: valkey/valkey:8.1.3
+        ports:
+        - containerPort: 6379
+        readinessProbe:
+          tcpSocket:
+            port: 6379
+          periodSeconds: 5
+        args:
+        - valkey-server
+        - --requirepass
+        - $(REDIS_HOST_PASSWORD)
+        env:
+        - name: REDIS_HOST_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: nextcloud-cache-auth
+              key: password
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nextcloud-cache
+  namespace: data
+spec:
+  selector:
+    app: nextcloud-cache
+  ports:
+  - port: 6379
+    targetPort: 6379

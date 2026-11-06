@@ -1,0 +1,14 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: tracearr-tls
+  namespace: tools
+spec:
+  secretName: tracearr-tls
+  dnsNames:
+  - tracearr.example.com
+  issuerRef:
+    name: letsencrypt-production
+    kind: ClusterIssuer
+  privateKey:
+    rotationPolicy: Always

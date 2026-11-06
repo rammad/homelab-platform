@@ -1,0 +1,64 @@
+# K3s backend for speedtest.example.com.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openspeedtest
+  namespace: tools
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openspeedtest
+  template:
+    metadata:
+      labels:
+        app: openspeedtest
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: control-plane
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: openspeedtest
+          image: openspeedtest/latest:v2.0.6@sha256:a6a7e3b3e9e93cfe7b9b2eb49c60b2a93644149a0a600845d4df57148b193ff6
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            - name: TZ
+              value: America/Los_Angeles
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 4Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openspeedtest
+  namespace: tools
+spec:
+  selector:
+    app: openspeedtest
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http

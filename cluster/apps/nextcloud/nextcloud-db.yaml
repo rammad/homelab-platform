@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nextcloud-db
+  namespace: data
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: &id001
+      app: nextcloud-db
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      nodeSelector:
+        kubernetes.io/hostname: control-plane
+      containers:
+      - name: nextcloud-db
+        image: postgres:13.22
+        ports:
+        - containerPort: 5432
+        readinessProbe:
+          tcpSocket:
+            port: 5432
+          periodSeconds: 5
+        command:
+        - postgres
+        args:
+        - -D
+        - /var/lib/postgresql/data
+        securityContext:
+          runAsUser: 999
+          runAsGroup: 999
+        volumeMounts:
+        - name: db
+          mountPath: /var/lib/postgresql/data
+      volumes:
+      - name: db
+        persistentVolumeClaim:
+          claimName: nextcloud-db
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nextcloud-db
+  namespace: data
+spec:
+  selector:
+    app: nextcloud-db
+  ports:
+  - port: 5432
+    targetPort: 5432

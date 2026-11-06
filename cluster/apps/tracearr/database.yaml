@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tracearr-db
+  namespace: tools
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: tracearr-db
+  template:
+    metadata:
+      labels:
+        app: tracearr-db
+    spec:
+      containers:
+        - name: postgres
+          image: timescale/timescaledb:latest-pg18@sha256:4051ec6e2c6c5b31fe789cf2cd87991ee1490b312b77fe02efaf51bec84b89b7
+          args:
+            - "-c"
+            - "max_locks_per_transaction=1024"
+            - "-c"
+            - "shared_buffers=512MB"
+            - "-c"
+            - "work_mem=64MB"
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: tracearr-credentials
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: tracearr-credentials
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: tracearr-credentials
+                  key: POSTGRES_DB
+            - name: PGDATA
+              value: "/var/lib/postgresql/data/pgdata"
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: db-storage
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: db-storage
+          persistentVolumeClaim:
+            claimName: tracearr-db-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tracearr-db
+  namespace: tools
+spec:
+  selector:
+    app: tracearr-db
+  ports:
+    - port: 5432
+      targetPort: 5432
