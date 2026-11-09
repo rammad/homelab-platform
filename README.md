@@ -202,6 +202,7 @@ installation of these example settings. See the
 
 - [Architecture decisions](docs/architecture-decisions.md): original choices and historical context.
 - [TrueNAS → k3s case study](docs/case-studies/truenas-to-k3s.md): migration, failures and verification.
+- [K3s observability case study](docs/case-studies/k3s-observability.md) covers the first Discord alerts and how they were investigated.
 - [Emby operations](docs/operations/emby.md): playback and transcode checks.
 - [Earlier Tdarr integration](cluster/apps/tdarr/node-join.md): historical shared-cache/copy-back failure.
 
